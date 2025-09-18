@@ -1,38 +1,42 @@
 import sqlite3
+import os
+from dotenv import load_dotenv
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.agent_toolkits.sql.base import create_sql_agent
+from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
+from langchain_community.utilities import SQLDatabase
 
-database = "student.db"
+# 🔹 Load API key from .env
+load_dotenv()
+api_key = os.getenv("GOOGLE_API_KEY")
 
-def create_tables():
-    conn  = sqlite3.connect(database)
-    cursor = conn.cursor()
+if not api_key:
+    raise ValueError("❌ GOOGLE_API_KEY not found! Add it to .env file.")
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS student(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            question TEXT NOT NULL,
-            answer TEXT NOT NNULL, 
-        )
-    """)
-    conn.commit()
-    cursor.close()
-    print("✅ Database and table created successfully!")
+# 🔹 Connect Gemini LLM
+llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro", google_api_key=api_key)
 
+# 🔹 Connect to SQLite DB
+db = SQLDatabase.from_uri("sqlite:///qa_bot.db")
 
-def insert_sample_data():
-    conn = sqlite3.connect(database)
-    cursor = conn.cursor()
+# 🔹 Toolkit (LangChain SQL Agent)
+toolkit = SQLDatabaseToolkit(db=db, llm=llm)
 
-    sample_data = [
-        ("What is Python?", "Python is a high-level programming language."),
-        ("What is LangChain?", "LangChain is a framework for building applications with LLMs."),
-        ("What is SQLite?", "SQLite is a lightweight, file-based database.")
-    ]
+# 🔹 Agent
+agent_executor = create_sql_agent(
+    llm=llm,
+    toolkit=toolkit,
+    verbose=True
+)
 
-    cursor.executemany("INSERT INTO database (question, answer) VALUES (?, ?)", sample_data)
-    conn.commit()
-    cursor.close()
-    print("Sample data inserted")
+def run_query_with_ai(query: str):
+    """AI se query karna aur jawab lana"""
+    result = agent_executor.run(query)
+    return result
 
 if __name__ == "__main__":
-    create_tables()
-    insert_sample_data()
+    # Example test
+    question = "What is stored in the database?"
+    print("User:", question)
+    answer = run_query_with_ai(question)
+    print("AI:", answer)

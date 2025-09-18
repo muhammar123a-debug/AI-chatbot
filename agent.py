@@ -21,3 +21,20 @@ db = SQLDatabase.from_url("sqlite:///database.db")
 #  Toolkit (LangChain SQL Agent)
 toolkit = SQLDatabaseToolkit(db=db, llm=llm)
 
+agent_executor = create_sql_agent(
+    llm=llm,
+    toolkit = toolkit,
+    verbose = True
+)
+
+def run_query_with_ai(query: str):
+    """AI se query karna aur jawab lana"""
+    result = agent_executor.run(query)
+    return result
+
+if __name__ == "__main__":
+    # Example test
+    question = "What is stored in the database?"
+    print("User:", question)
+    answer = run_query_with_ai(question)
+    print("AI:", answer)
